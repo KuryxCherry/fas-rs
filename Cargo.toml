@@ -50,7 +50,7 @@ quick-xml = { version = "0.42.0", features = ["serialize"] }
 mlua = { version = "0.12.3", features = ["luajit", "vendored", "error-send"] }
 frame-analyzer = { path = "crates/frame-analyzer" }
 dumpsys-rs = { path = "crates/dumpsys-rs" }
-mimalloc = { version = "0.1.52", features = ["no_thp", "override"] }
+mimalloc = { version = "0.1.52", features = ["no_thp"] }
 num_cpus = "1.17.0"
 nix = { version = "0.31.4", features = ["sched"] }
 
