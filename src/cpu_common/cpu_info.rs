@@ -58,7 +58,20 @@ impl Info {
             .split_whitespace()
             .map(|f| f.parse::<isize>().context("Failed to parse frequency"))
             .collect::<Result<_>>()?;
+        let boost_content = fs::read_to_string("/sys/devices/system/cpu/cpufreq/boost")
+            .ok()
+            .is_none_or(|s| s.trim() != "0")
+            .then(|| fs::read_to_string(path.join("scaling_boost_frequencies")).ok())
+            .flatten();
+        if let Some(boost_content) = boost_content {
+            freqs.extend(
+                boost_content
+                    .split_whitespace()
+                    .filter_map(|f| f.parse::<isize>().ok()),
+            );
+        }
         freqs.sort_unstable();
+        freqs.dedup();
 
         let affected_cpus = fs::read_to_string(path.join("affected_cpus"))
             .context("Failed to read affected_cpus")?
