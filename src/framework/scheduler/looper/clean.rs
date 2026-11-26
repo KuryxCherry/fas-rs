@@ -37,7 +37,11 @@ where
     let path = path.as_ref();
 
     let path_str = path.display().to_string();
-    let mount_path = format!("/cache/mount_mask_{value}");
+    let mount_path = if Path::new("/cache").is_dir() {
+        format!("/cache/mount_mask_{value}")
+    } else {
+        format!("/dev/fas_rs/mount_mask_{value}")
+    };
 
     let _ = unmount(&path_str);
     let _ = set_permissions(path, PermissionsExt::from_mode(0o644));

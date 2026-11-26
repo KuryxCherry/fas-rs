@@ -1,0 +1,20 @@
+[package]
+name = "frame-analyzer"
+edition = "2024"
+version = "0.3.5"
+authors = ["shadow3aaa@github.com"]
+repository = "https://github.com/shadow3aaa/frame-analyzer-ebpf"
+description = "Track the frametime of Android apps, based on ebpf & uprobe"
+license = "GPL-3.0"
+
+[dependencies]
+aya = "0.16.0"
+frame-analyzer-ebpf-common = { path = "../frame-analyzer-ebpf-common", features = ["user"] }
+anyhow = "1.0.105"
+libc = "0.2.191"
+thiserror = "2.0.21"
+ctor = "1.0.14"
+mio = { version = "1.2.5", features = ["os-ext"] }
+
+[build-dependencies]
+anyhow = "1.0.105"

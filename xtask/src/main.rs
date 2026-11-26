@@ -23,10 +23,10 @@ use std::{
     process::{self, Command},
 };
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use fs_extra::{dir, file};
-use zip::{CompressionMethod, write::FileOptions};
+use zip::{CompressionMethod, write::SimpleFileOptions};
 
 use zip_ext::zip_create_from_directory_with_options;
 
@@ -139,7 +139,10 @@ fn build(release: bool, verbose: bool) -> Result<()> {
         cargo.arg("--verbose");
     }
 
-    cargo.spawn()?.wait()?;
+    let status = cargo.spawn()?.wait()?;
+    if !status.success() {
+        bail!("cargo ndk build failed with status: {status}");
+    }
 
     let module_dir = module_dir();
     dir::copy(
@@ -167,7 +170,7 @@ fn build(release: bool, verbose: bool) -> Result<()> {
     let build_type = if release { "release" } else { "debug" };
     let package_path = Path::new("output").join(format!("fas-rs({build_type}).zip"));
 
-    let options: FileOptions<'_, ()> = FileOptions::default()
+    let options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
         .compression_level(Some(9));
     zip_create_from_directory_with_options(&package_path, &temp_dir, |_| options).unwrap();
@@ -290,8 +293,14 @@ fn build_webui() -> Result<()> {
         command
     };
 
-    npm().arg("install").spawn()?.wait()?;
-    npm().args(["run", "build"]).spawn()?.wait()?;
+    let status = npm().arg("install").spawn()?.wait()?;
+    if !status.success() {
+        bail!("npm install failed with status: {status}");
+    }
+    let status = npm().args(["run", "build"]).spawn()?.wait()?;
+    if !status.success() {
+        bail!("npm run build failed with status: {status}");
+    }
 
     Ok(())
 }

@@ -163,8 +163,14 @@ fn get_thread_ids(pid: i32) -> Result<Vec<i32>> {
 fn get_thread_cpu_time(pid: i32, tid: i32) -> Result<u64> {
     let stat_path = format!("/proc/{pid}/task/{tid}/stat");
     let stat_content = fs::read_to_string(stat_path)?;
-    let parts: Vec<&str> = stat_content.split_whitespace().collect();
-    let utime = parts[13].parse::<u64>().unwrap_or(0);
-    let stime = parts[14].parse::<u64>().unwrap_or(0);
+    // Skip past "(comm)" because thread names may contain spaces or parentheses.
+    let after_comm = stat_content
+        .rsplit_once(')')
+        .map(|(_, rest)| rest)
+        .ok_or_else(|| anyhow::anyhow!("Malformed stat file for {pid}/{tid}"))?;
+    let mut parts = after_comm.split_whitespace();
+    // Fields after ')': 0=state, ..., 11=utime (field 14), 12=stime (field 15)
+    let utime = parts.nth(11).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+    let stime = parts.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
     Ok(utime + stime)
 }

@@ -17,7 +17,7 @@
 
 use std::time::{Duration, Instant};
 
-use dumpsys_rs::Dumpsys;
+use dumpsys_rs::BoundDumpsys;
 
 const REFRESH_TIME: Duration = Duration::from_secs(1);
 
@@ -76,30 +76,34 @@ impl WindowsInfo {
             .next()
     }
 
-    // Modern Parser (Android 16+)
+    // Modern Parser (Android 16 / Android 17+)
     // Parses the PID from the `WINDOW MANAGER WINDOWS` section.
     fn parse_a16_format(dump: &str, package_name: &str) -> Option<i32> {
         let mut in_target_window_section = false;
         for line in dump.lines() {
-            if in_target_window_section {
-                if line.contains("mSession=") {
-                    let session_part = line.split("mSession=").nth(1)?;
-                    let content_start = session_part.find('{')? + 1;
-                    let content_end = session_part.find('}')?;
-                    let content = &session_part[content_start..content_end];
-                    let pid_part = content.split_whitespace().nth(1)?;
-                    let pid_str = pid_part.split(':').next()?;
-                    return pid_str.parse::<i32>().ok();
-                }
+            if line.contains("Window #") {
+                in_target_window_section = line.contains(package_name);
+                continue;
+            }
 
-                if line.contains("Window #") {
-                    return None;
+            if in_target_window_section && line.contains("mSession=") {
+                if let Some(pid) = Self::extract_session_pid(line) {
+                    return Some(pid);
                 }
-            } else if line.contains("Window #") && line.contains(package_name) {
-                in_target_window_section = true;
+                in_target_window_section = false;
             }
         }
         None
+    }
+
+    fn extract_session_pid(line: &str) -> Option<i32> {
+        let session_part = line.split("mSession=").nth(1)?;
+        let content_start = session_part.find('{')? + 1;
+        let content_end = session_part.find('}')?;
+        let content = session_part.get(content_start..content_end)?;
+        let pid_part = content.split_whitespace().nth(1)?;
+        let pid_str = pid_part.split(':').next()?;
+        pid_str.parse::<i32>().ok()
     }
 
     // Legacy Parser (Android 15 and older)
@@ -110,7 +114,7 @@ impl WindowsInfo {
             if line.starts_with("  Session Session{") {
                 let content_start = line.find('{')? + 1;
                 let content_end = line.find('}')?;
-                let content = &line[content_start..content_end];
+                let content = line.get(content_start..content_end)?;
                 let pid_part = content.split_whitespace().nth(1)?;
                 let pid_str = pid_part.split(':').next()?;
                 last_pid_found = pid_str.parse::<i32>().ok();
@@ -129,7 +133,7 @@ impl WindowsInfo {
 }
 
 pub struct TopAppsWatcher {
-    windows_dumper: Dumpsys,
+    windows_dumper: BoundDumpsys,
     cache: WindowsInfo,
     last_refresh: Instant,
 }
@@ -137,9 +141,12 @@ pub struct TopAppsWatcher {
 impl TopAppsWatcher {
     pub fn new() -> Self {
         let windows_dumper = loop {
-            match Dumpsys::new("window") {
-                Some(d) => break d,
-                None => std::thread::sleep(Duration::from_secs(1)),
+            match BoundDumpsys::new("window") {
+                Ok(d) => break d,
+                Err(e) => {
+                    log::error!("Failed to connect window service: {e}, retrying");
+                    std::thread::sleep(Duration::from_secs(1));
+                }
             }
         };
 

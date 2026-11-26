@@ -110,13 +110,13 @@ fn update_json(data: &CargoConfig) -> Result<()> {
     let version = format!("v{version}");
 
     let zip_url =
-        format!("https://github.com/shadow3aaa/fas-rs/releases/download/{version}/fas-rs.zip");
+        format!("https://github.com/KuryxCherry/fas-rs/releases/download/{version}/fas-rs.zip");
 
     let cn = UpdateJson {
         versionCode: version_code,
         version: version.clone(),
         zipUrl: zip_url.clone(),
-        changelog: "https://github.com/shadow3aaa/fas-rs/raw/master/update/zh-CN/changelog.md"
+        changelog: "https://github.com/KuryxCherry/fas-rs/raw/master/update/zh-CN/changelog.md"
             .into(),
     };
 
@@ -124,7 +124,7 @@ fn update_json(data: &CargoConfig) -> Result<()> {
         versionCode: version_code,
         version,
         zipUrl: zip_url,
-        changelog: "https://github.com/shadow3aaa/fas-rs/raw/master/update/en-US/changelog.md"
+        changelog: "https://github.com/KuryxCherry/fas-rs/raw/master/update/en-US/changelog.md"
             .into(),
     };
 

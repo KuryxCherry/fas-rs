@@ -4,39 +4,31 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use zip::{
-    ZipWriter,
-    result::ZipResult,
-    write::{FileOptionExtension, FileOptions},
-};
+use zip::{ZipWriter, result::ZipResult, write::SimpleFileOptions};
 
 /// Creates a zip archive that contains the files and directories from the specified directory, uses the specified compression level.
-pub fn zip_create_from_directory_with_options<F, T>(
-    archive_file: &PathBuf,
+pub fn zip_create_from_directory_with_options<F>(
+    archive_file: &Path,
     directory: &Path,
     cb_file_options: F,
 ) -> ZipResult<()>
 where
-    T: FileOptionExtension,
-    F: Fn(&PathBuf) -> FileOptions<T>,
+    F: Fn(&PathBuf) -> SimpleFileOptions,
 {
     let file = File::create(archive_file)?;
     let zip_writer = ZipWriter::new(file);
     create_from_directory_with_options(zip_writer, directory, cb_file_options)
 }
 
-fn create_from_directory_with_options<F, T>(
+fn create_from_directory_with_options<F>(
     mut zip_writer: ZipWriter<File>,
     directory: &Path,
     cb_file_options: F,
 ) -> ZipResult<()>
 where
-    T: FileOptionExtension,
-    F: Fn(&PathBuf) -> FileOptions<T>,
+    F: Fn(&PathBuf) -> SimpleFileOptions,
 {
-    let mut paths_queue: Vec<PathBuf> = vec![];
-    paths_queue.push(directory.to_path_buf());
-
+    let mut paths_queue: Vec<PathBuf> = vec![directory.to_path_buf()];
     let mut buffer = Vec::new();
 
     while let Some(next) = paths_queue.pop() {
@@ -45,18 +37,18 @@ where
         for entry in directory_entry_iterator {
             let entry_path = entry?.path();
             let file_options = cb_file_options(&entry_path);
-            let entry_metadata = std::fs::metadata(entry_path.clone())?;
+            let entry_metadata = std::fs::metadata(&entry_path)?;
             if entry_metadata.is_file() {
                 let mut f = File::open(&entry_path)?;
                 f.read_to_end(&mut buffer)?;
                 let relative_path = make_relative_path(directory, &entry_path);
                 zip_writer.start_file(path_as_string(&relative_path), file_options)?;
-                zip_writer.write_all(buffer.as_ref())?;
+                zip_writer.write_all(&buffer)?;
                 buffer.clear();
             } else if entry_metadata.is_dir() {
                 let relative_path = make_relative_path(directory, &entry_path);
                 zip_writer.add_directory(path_as_string(&relative_path), file_options)?;
-                paths_queue.push(entry_path.clone());
+                paths_queue.push(entry_path);
             }
         }
     }
@@ -77,13 +69,13 @@ fn make_relative_path(root: &Path, current: &Path) -> PathBuf {
                 break;
             }
         } else {
-            result.push(current_path_component)
+            result.push(current_path_component);
         }
     }
     result
 }
 
-fn path_as_string(path: &std::path::Path) -> String {
+fn path_as_string(path: &Path) -> String {
     let mut path_str = String::new();
     for component in path.components() {
         if let Component::Normal(os_str) = component {
