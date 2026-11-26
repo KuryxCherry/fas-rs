@@ -1,6 +1,6 @@
 use std::io;
 
-use rsbinder::error::StatusCode;
+use rsbinder::StatusCode;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

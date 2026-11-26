@@ -83,6 +83,7 @@ fn build_ebpf(extra_bin: Option<&Path>) -> Result<()> {
         fs::create_dir_all(&target_dir)?;
     }
 
+    #[allow(unused_mut)]
     let mut ebpf_args = vec![
         "build",
         "--target",
